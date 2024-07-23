@@ -11,7 +11,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var user1 string = "ojojohnson@localhost.com"
+var user1 string = "jeremiah@localhost.com"
 var password1 string = "jeremiah"
 
 var user2 string = "marvelous@localhost.com"

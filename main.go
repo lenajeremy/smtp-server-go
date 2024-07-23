@@ -3,7 +3,7 @@ package main
 import (
 	"sync"
 
-	"jeremiah.smtp/client"
+	// "jeremiah.smtp/client"
 	"jeremiah.smtp/server"
 )
 
@@ -11,12 +11,11 @@ func main() {
 	serverReady := make(chan struct{})
 	var wg sync.WaitGroup
 
-	wg.Add(3)
+	wg.Add(2)
 
-	
 	go server.SetupHTTPServer(&wg)
 	go server.SetupSMTPServer(&wg, &serverReady)
-	go client.RunClient(&wg, &serverReady)
+	// go client.RunClient(&wg, &serverReady)
 
 	wg.Wait()
 

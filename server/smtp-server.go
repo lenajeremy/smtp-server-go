@@ -15,11 +15,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var db *sql.DB
+var DB *sql.DB
 
 func initDB() {
 	var err error
-	db, err = sql.Open("sqlite3", "./users.db")
+	DB, err = sql.Open("sqlite3", "./users.db")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func initDB() {
     );
     `
 
-	_, err = db.Exec(sqlStatements)
+	_, err = DB.Exec(sqlStatements)
 
 	if err != nil {
 		log.Fatal(err)
@@ -73,7 +73,7 @@ func (s *Session) AuthMechanisms() []string {
 func (s *Session) Auth(mech string) (sasl.Server, error) {
 	return sasl.NewPlainServer(func(identity, username, password string) error {
 		var hashedPassword string
-		err := db.QueryRow("SELECT password FROM users WHERE email = ?", username).Scan(&hashedPassword)
+		err := DB.QueryRow("SELECT password FROM users WHERE email = ?", username).Scan(&hashedPassword)
 
 		if err != nil {
 			log.Printf(err.Error())
@@ -128,7 +128,7 @@ func (s *Session) Logout() error {
 }
 
 func InsertEmail(from, to, subject, body string) error {
-	_, err := db.Exec(`
+	_, err := DB.Exec(`
         INSERT INTO emails (from_email, to_email, subject, body)
         VALUES (?, ?, ?, ?)
     `, from, to, subject, body)
@@ -137,7 +137,7 @@ func InsertEmail(from, to, subject, body string) error {
 
 func SetupSMTPServer(wg *sync.WaitGroup, ch *chan struct{}) {
 	defer func() {
-		db.Close()
+		DB.Close()
 		wg.Done()
 	}()
 
@@ -163,8 +163,4 @@ func SetupSMTPServer(wg *sync.WaitGroup, ch *chan struct{}) {
 	if err := s.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
-}
-
-func SendMail(subject, body, from, to string) {
-	
 }
