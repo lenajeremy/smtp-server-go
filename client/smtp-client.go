@@ -29,7 +29,12 @@ func createUser(username string, password string) error {
 		log.Fatal(err)
 	}
 
-	defer db.Close()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	hashedPassword, err := hashPassword(password)
 
@@ -37,9 +42,7 @@ func createUser(username string, password string) error {
 		log.Panic("Unable to get hashed password")
 	}
 
-	var query = fmt.Sprintf(`
-		INSERT INTO users (email, password) VALUES ('%s', '%s');
-	`, username, hashedPassword)
+	var query = fmt.Sprintf(`INSERT INTO users (email, password) VALUES ('%s', '%s');`, username, hashedPassword)
 
 	_, err = db.Exec(query)
 

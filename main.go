@@ -10,7 +10,6 @@ import (
 func main() {
 	serverReady := make(chan struct{})
 	var wg sync.WaitGroup
-
 	wg.Add(2)
 
 	go server.SetupHTTPServer(&wg)

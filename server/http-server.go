@@ -13,7 +13,7 @@ import (
 func enableCors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Controll-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -47,31 +47,29 @@ func SetupHTTPServer(wg *sync.WaitGroup) {
 	})
 
 	r.HandleFunc("/mails", func(w http.ResponseWriter, r *http.Request) {
-		mails := []MailObject{}
+		var mails []MailObject
 
-		rows, err := DB.Query(`
-			SELECT "from_email", "to_email", subject, body, created_at 
-			FROM emails 
-			ORDER BY created_at DESC 
-			LIMIT 20
-		`)
+		rows, err := DB.Query(`SELECT "from_email", "to_email", subject, body, created_at FROM emails ORDER BY created_at DESC LIMIT 20`)
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		defer rows.Close()
+		defer func() {
+			if err := rows.Close(); err != nil {
+				log.Fatal(err)
+			}
+		}()
 
 		// Process the rows
 		for rows.Next() {
 			var m MailObject
-			err := rows.Scan(&m.From, &m.To, &m.Subject, &m.Body, &m.CreatedAt)
 
-			if err != nil {
+			if err := rows.Scan(&m.From, &m.To, &m.Subject, &m.Body, &m.CreatedAt); err != nil {
 				log.Fatal(err)
+			} else {
+				mails = append(mails, m)
 			}
-
-			mails = append(mails, m)
 		}
 
 		if err = rows.Err(); err != nil {
@@ -107,19 +105,34 @@ func SetupHTTPServer(wg *sync.WaitGroup) {
 
 		if err != nil {
 			http.Error(w, "Error reading request body", http.StatusBadRequest)
-			return
+			log.Printf("Error reading request body: %v\n", err)
 		}
 
-		InsertEmail(body.From, body.To, body.Subject, body.Body)
+		insertEmailErr := InsertEmail(body.From, body.To, body.Subject, body.Body)
+		if insertEmailErr != nil {
+			http.Error(w, "Error", http.StatusInternalServerError)
+			log.Println("Could not save email to DB", err)
+		}
 
-		json.NewEncoder(w).Encode(body)
+		encodeJSONError := json.NewEncoder(w).Encode(body)
+		if encodeJSONError != nil {
+			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+			log.Println("Error encoding response", encodeJSONError)
+		}
 	})
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		dict := map[string]any{"name": "jeremiah", "age": 22, "sings": true, "dances": false}
-		json.NewEncoder(w).Encode(dict)
+
+		if err := json.NewEncoder(w).Encode(dict); err != nil {
+			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		}
 	})
 
 	log.Println("HTTP server running on localhost:8000")
-	http.ListenAndServe(":8000", r)
+
+	err := http.ListenAndServe(":8000", r)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

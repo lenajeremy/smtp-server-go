@@ -98,10 +98,8 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 }
 
 func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
-	if s.From != to {
-		s.To = to
-		log.Println("Mail to:", to)
-	}
+	s.To = to
+	log.Println("Mail to:", to)
 	return nil
 }
 
@@ -128,16 +126,16 @@ func (s *Session) Logout() error {
 }
 
 func InsertEmail(from, to, subject, body string) error {
-	_, err := DB.Exec(`
-        INSERT INTO emails (from_email, to_email, subject, body)
-        VALUES (?, ?, ?, ?)
-    `, from, to, subject, body)
+	_, err := DB.Exec(`INSERT INTO emails (from_email, to_email, subject, body) VALUES (?, ?, ?, ?)`, from, to, subject, body)
 	return err
 }
 
 func SetupSMTPServer(wg *sync.WaitGroup, ch *chan struct{}) {
 	defer func() {
-		DB.Close()
+		if err := DB.Close(); err != nil {
+			log.Println("Failed to close DB")
+			log.Println(err)
+		}
 		wg.Done()
 	}()
 
